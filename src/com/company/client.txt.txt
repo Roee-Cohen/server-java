@@ -1,0 +1,124 @@
+package com.company;// A Java program for a Client
+
+import com.google.gson.Gson;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.Socket;
+import java.net.SocketException;
+import java.util.Scanner;
+
+public class Client
+{
+    // initialize socket and input output streams
+    static int PORT = 9999;
+    private Socket socket;
+    private DataOutputStream outStream;
+
+    // constructor to put ip address and port
+    public Client(String address)
+    {
+        // establish a connection
+        try
+        {
+            this.socket = new Socket(address, PORT);
+            System.out.println("Connected...");
+
+            // sends output to the socket
+            this.outStream = new DataOutputStream(this.socket.getOutputStream());
+        }
+        catch(IOException i)
+        {
+            System.out.println(i);
+            System.out.println("Can not reach the server");
+            System.exit(0);
+        }
+
+        this.clientRoutine();
+    }
+
+    private void clientRoutine() {
+        // string to read message from input
+        PacketFormat pf = new PacketFormat("", "");
+        Gson g = new Gson();
+
+        String command = "";
+        String data;
+        Scanner s = new Scanner(System.in);
+
+        // keep reading until SHUTDOWN command is input
+        do
+        {
+            try
+            {
+                System.out.println("Enter your message to Server");
+                data = s.nextLine();
+
+                System.out.println("Enter command to Server (CREATE, READ, UPDATE, DELETE, SHUTDOWN)");
+                command = s.nextLine().toUpperCase();
+
+                if (!Settings.commandList.contains(command)){
+                    System.out.println(command + " is not recognized as an internal or external command");
+                }
+                else{
+//                    pf.data = msg;
+//                    pf.command = command;
+
+//                    String jsonObj = g.toJson(pf);
+//                    System.out.println(jsonObj);
+//
+//                    this.outStream.writeUTF(jsonObj);
+                    
+                    this.ExecCommand(command, data);
+                }
+            }
+            catch (SocketException i){
+                System.out.println(i);
+                this.closeSocket("Server forced to shutdown");
+                break;
+            }
+            catch(IOException i)
+            {
+                closeSocket("IO Exception on client");
+                System.out.println(i);
+                break;
+            }
+        }
+        while (!command.equals(Settings.SHUTDOWN));
+
+        // close the connection
+        if (command.equals(Settings.SHUTDOWN))
+            this.closeSocket("User asked to shutdown");
+    }
+
+    private void closeSocket(String msg){
+
+        System.out.println(msg);
+        System.out.println("Closing Connection...");
+
+        try {
+            this.socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            this.outStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    private void ExecCommand(String command, String data){
+        if (command.equals(Settings.CREATE))
+            this.createUser(data);
+    }
+    
+    private void createUser(String data){
+        
+    }
+
+    public static void main(String args[])
+    {
+        Client client = new Client("127.0.0.1");
+    }
+}
