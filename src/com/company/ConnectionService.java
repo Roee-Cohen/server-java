@@ -16,6 +16,10 @@ public class ConnectionService {
         connections.add(con);
     }
 
+    public void DeleteConnection(Socket con) {
+        connections.remove(con);
+    }
+
     public List<Socket> GetAllConnections(){
         return connections;
     }

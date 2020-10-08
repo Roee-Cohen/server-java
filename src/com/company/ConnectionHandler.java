@@ -9,6 +9,7 @@ import java.net.SocketException;
 
 class ConnectionHandler implements Runnable
 {
+    private DbHandler dbHandler;
     private ConnectionService connectionService;
     private Socket socket;
     private DataInputStream inStream;
@@ -16,9 +17,10 @@ class ConnectionHandler implements Runnable
     private Gson g;
 
     // Constructor
-    public ConnectionHandler(Socket socket, ConnectionService connectionService)
+    public ConnectionHandler(Socket socket, ConnectionService connectionService, DbHandler dbHandler)
     {
         this.socket = socket;
+        this.dbHandler = dbHandler;
         this.connectionService = connectionService;
 
         System.out.println(Thread.currentThread().getName() + connectionService.GetAllConnections());
@@ -86,6 +88,7 @@ class ConnectionHandler implements Runnable
         System.out.println("Closing Connection...");
 
         try {
+            this.connectionService.DeleteConnection(this.socket);
             this.socket.close();
             this.inStream.close();
             this.outStream.close();
@@ -96,6 +99,9 @@ class ConnectionHandler implements Runnable
     }
 
     private ResponseFormat ExecCommand(RequestFormat req){
+
+        if (req.command.equals(Flags.REGISTER))
+            return this.createUser(req);
 
         if (req.command.equals(Flags.CREATE))
             return this.createUser(req);
@@ -112,18 +118,23 @@ class ConnectionHandler implements Runnable
         System.out.println(u.getUsername() + " " + u.getPassword());
 
         // create user in db
-        return new ResponseFormat(Status.OK, "user created");
+        Status s = this.dbHandler.Create(u);
+        System.out.println("Create operation status: " + s.name());
+
+        return new ResponseFormat(s, "user created");
     }
 
     private ResponseFormat Login(RequestFormat req){
         System.out.println("Login check on server side");
 
         User u = this.g.fromJson(req.data, User.class);
-        System.out.println("user created " + u.getUsername() + " " + u.getPassword());
+        System.out.println("user login check " + u.getUsername() + " " + u.getPassword());
 
         // validate user
+        Status s = this.dbHandler.Login(u);
+        System.out.println("Login operation status: " + s.name());
 
         // generate login packet
-        return new ResponseFormat(Status.OK, "successfully logged in");
+        return new ResponseFormat(s, "successfully logged in");
     }
 }
