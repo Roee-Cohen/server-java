@@ -43,38 +43,6 @@ public class Main {
     }
 
     public static void main(String[] args) {
-	// write your code here
-//        Scanner s = new Scanner(System.in);
-//
-//        System.out.println("Enter your command: ");
-//        String str = s.nextLine();
-//        int index = str.indexOf(' ');
-//        String command = str.substring(0, index);
-//        String data = str.substring(index + 1);
-//
-//        System.out.println(command + data);
-//        System.out.println(data);
-
-//        String CREATE = "CREATE";
-//        String READ = "READ";
-//        String UPDATE = "UPDATE";
-//        String DELETE = "DELETE";
-//        String SHUTDOWN = "SHUTDOWN";
-//        String LOGIN = "LOGIN";
-//
-//        List<String> commandList = Arrays.asList(CREATE, READ, UPDATE, DELETE, SHUTDOWN, LOGIN);
-//
-//        System.out.println(commandList.toString());
-
-//        String text = "xd xd lol my password is that";
-//
-//
-//        try {
-//            System.out.println(encryptPass(text));
-//        } catch (NoSuchAlgorithmException e) {
-//            e.printStackTrace();
-//        }
-
 
         List<String> lst;
         lst = new ArrayList<String>();

@@ -6,7 +6,7 @@ import java.io.*;
 public class Server
 {
     //initialize socket and input stream
-    static int PORT = 9999;
+    static int PORT = 7800;
     private Socket connection = null;
     private ConnectionService connectionService;
     private ServerSocket serverSocket = null;
@@ -18,7 +18,7 @@ public class Server
         try
         {
             this.serverSocket = new ServerSocket(PORT);
-            System.out.println("Server started listening on port " + PORT);
+            System.out.println("Server started listening on port " + PORT + " - " + this.serverSocket.getInetAddress().toString());
             this.connectionService = new ConnectionService();
 
             while(true)

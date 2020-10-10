@@ -3,7 +3,10 @@ package com.company;
 import com.google.gson.Gson;
 import com.utils.*;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketException;
 
@@ -97,6 +100,9 @@ class ConnectionHandler implements Runnable
 
     private ResponseFormat ExecCommand(RequestFormat req){
 
+        if (req.command.equals(Flags.REGISTER))
+            return this.createUser(req);
+
         if (req.command.equals(Flags.CREATE))
             return this.createUser(req);
 
@@ -119,11 +125,12 @@ class ConnectionHandler implements Runnable
         System.out.println("Login check on server side");
 
         User u = this.g.fromJson(req.data, User.class);
-        System.out.println("user created " + u.getUsername() + " " + u.getPassword());
+        System.out.println("user login " + u.getUsername() + " " + u.getPassword());
 
         // validate user
 
+
         // generate login packet
-        return new ResponseFormat(Status.OK, "successfully logged in");
+        return new ResponseFormat(Status.NOTFOUND, "successfully logged in");
     }
 }

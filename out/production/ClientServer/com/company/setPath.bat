@@ -1,1 +1,0 @@
-set path=%path%;C:\Users\משתמש\.jdks\openjdk-15\bin
