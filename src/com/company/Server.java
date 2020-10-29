@@ -9,6 +9,7 @@ public class Server
     static int PORT = 7800;
     private Socket connection = null;
     private ConnectionService connectionService;
+    private DbHandler dbHandler;
     private ServerSocket serverSocket = null;
 
     // constructor
@@ -18,7 +19,8 @@ public class Server
         try
         {
             this.serverSocket = new ServerSocket(PORT);
-            System.out.println("Server started listening on port " + PORT + " - " + this.serverSocket.getInetAddress().toString());
+            System.out.println("Server started listening on port " + PORT);
+            this.dbHandler = new DbHandler();
             this.connectionService = new ConnectionService();
 
             while(true)
@@ -29,7 +31,7 @@ public class Server
 
                 this.connectionService.AddConnection(this.connection);
 
-                new Thread(new ConnectionHandler(this.connection, this.connectionService)).start();
+                new Thread(new ConnectionHandler(this.connection, this.connectionService, this.dbHandler)).start();
             }
         }
         catch(IOException i)
