@@ -6,9 +6,10 @@ import java.io.*;
 public class Server
 {
     //initialize socket and input stream
-    static int PORT = 9999;
+    static int PORT = 7800;
     private Socket connection = null;
     private ConnectionService connectionService;
+    private DbHandler dbHandler;
     private ServerSocket serverSocket = null;
 
     // constructor
@@ -19,6 +20,7 @@ public class Server
         {
             this.serverSocket = new ServerSocket(PORT);
             System.out.println("Server started listening on port " + PORT);
+            this.dbHandler = DbHandler.getInstance();
             this.connectionService = new ConnectionService();
 
             while(true)
@@ -27,9 +29,10 @@ public class Server
                 this.connection = this.serverSocket.accept();
                 System.out.println("User Connected");
 
-                this.connectionService.AddConnection(this.connection);
+                String connectionID = "NULL"+this.connectionService.GetAllConnections().size();
+                this.connectionService.AddConnection(connectionID, this.connection);
 
-                new Thread(new ConnectionHandler(this.connection, this.connectionService)).start();
+                new Thread(new ConnectionHandler(this.connection, connectionID, this.connectionService)).start();
             }
         }
         catch(IOException i)

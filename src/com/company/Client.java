@@ -18,7 +18,7 @@ import java.security.NoSuchAlgorithmException;
 public class Client
 {
     // initialize socket and input output streams
-    static int PORT = 9999;
+    static int PORT = 7800;
     private Socket socket;
     private DataOutputStream outStream;
     private DataInputStream inStream;
@@ -96,8 +96,10 @@ public class Client
         System.exit(0);
     }
 
-    private ResponseFormat ExecCommand(Flags command, String data){
+    public ResponseFormat ExecCommand(Flags command, String data) {
 
+        if (command.equals(Flags.REGISTER))
+            return createUser(data);
         if (command.equals(Flags.CREATE))
             return createUser(data);
         if (command.equals(Flags.LOGIN))
@@ -117,9 +119,8 @@ public class Client
         try {
             this.outStream.writeUTF(request);
             String response = this.inStream.readUTF();
-            ResponseFormat res = this.g.fromJson(response, ResponseFormat.class);
+            return this.g.fromJson(response, ResponseFormat.class);
 
-            return res;
 //            if (res.status.equals(Status.OK)){
 //                System.out.println(res.data);
 //                return res;
@@ -146,9 +147,8 @@ public class Client
         try {
             this.outStream.writeUTF(request);
             String response = this.inStream.readUTF();
-            ResponseFormat res = this.g.fromJson(response, ResponseFormat.class);
+            return this.g.fromJson(response, ResponseFormat.class);
 
-            return res;
 //            if (res.status.equals(Status.OK)){
 //                System.out.println(res.data);
 //            }
