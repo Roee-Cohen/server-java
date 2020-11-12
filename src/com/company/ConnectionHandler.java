@@ -3,28 +3,30 @@ package com.company;
 import com.google.gson.Gson;
 import com.utils.*;
 
-import java.io.BufferedInputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.Socket;
 import java.net.SocketException;
+import java.util.Collection;
+import java.util.HashMap;
 
 class ConnectionHandler implements Runnable
 {
     private DbHandler dbHandler;
+    private String connectionID;
     private ConnectionService connectionService;
     private Socket socket;
     private DataInputStream inStream;
     private DataOutputStream outStream;
     private Gson g;
 
+
     // Constructor
-    public ConnectionHandler(Socket socket, ConnectionService connectionService, DbHandler dbHandler)
+    public ConnectionHandler(Socket socket, String connectionID, ConnectionService connectionService)
     {
         this.socket = socket;
-        this.dbHandler = dbHandler;
+        this.dbHandler = DbHandler.getInstance();
         this.connectionService = connectionService;
+        this.connectionID = connectionID;
 
         System.out.println(Thread.currentThread().getName() + connectionService.GetAllConnections());
 
@@ -66,6 +68,7 @@ class ConnectionHandler implements Runnable
                     // receive request
                     request = this.inStream.readUTF();
                     req = this.g.fromJson(request, RequestFormat.class);
+                    System.out.println("Flags: " + req.command.name());
                 }
                 catch (SocketException i){
                     System.out.println(i);
@@ -89,12 +92,15 @@ class ConnectionHandler implements Runnable
 
         System.out.println(msg);
         System.out.println("Closing Connection...");
+        System.out.println(this.connectionService.GetAllConnections());
 
         try {
-            this.connectionService.DeleteConnection(this.socket);
+            this.connectionService.DeleteConnection(this.connectionID);
             this.socket.close();
             this.inStream.close();
             this.outStream.close();
+
+            System.out.println(this.connectionService.GetAllConnections());
         }
         catch (IOException e) {
             e.printStackTrace();
@@ -104,18 +110,21 @@ class ConnectionHandler implements Runnable
     private ResponseFormat ExecCommand(RequestFormat req){
 
         if (req.command.equals(Flags.REGISTER))
-            return this.createUser(req);
+            return this.CreateUser(req);
 
         if (req.command.equals(Flags.CREATE))
-            return this.createUser(req);
+            return this.CreateUser(req);
 
         if (req.command.equals(Flags.LOGIN))
             return this.Login(req);
 
+        if (req.command.equals(Flags.MESSAGE))
+            return this.MessagePass(req);
+
         return null;
     }
 
-    private ResponseFormat createUser(RequestFormat req){
+    private ResponseFormat CreateUser(RequestFormat req){
         System.out.println("create user is called");
         User u = this.g.fromJson(req.data, User.class);
         System.out.println(u.getUsername() + " " + u.getPassword());
@@ -137,8 +146,45 @@ class ConnectionHandler implements Runnable
         Status s = this.dbHandler.Login(u);
         System.out.println("Login operation status: " + s.name());
 
+        this.connectionService.ChangeKey(connectionID, this.socket, u.getUsername());
+        this.connectionID = u.getUsername();
 
         // generate login packet
         return new ResponseFormat(s, "successfully logged in");
+    }
+
+    private ResponseFormat MessagePass(RequestFormat req){
+        System.out.println("Broadcast");
+        MessagePacket msg = this.g.fromJson(req.data, MessagePacket.class);
+        System.out.println(msg.content);
+        String carry = this.g.toJson(msg);
+        ResponseFormat res = new ResponseFormat(Status.INTERNAL_SERVER_ERROR, Status.INTERNAL_SERVER_ERROR.name());
+
+        HashMap<String, Socket> connections = this.connectionService.GetAllConnections();
+
+
+        for(String username : connections.keySet()){
+            if (username.equals(msg.sender)){
+
+                // get connections to send message
+                Collection<Socket> dest = this.connectionService.GetAllConnections().values();
+                //dest.remove(this.socket);
+
+                // send for each connection
+                for (Socket con : dest){
+                    try {
+                        DataOutputStream distributor = new DataOutputStream(con.getOutputStream());
+                        distributor.writeUTF(msg.content);
+
+                        res.status = Status.OK;
+                        res.data = Status.OK.name();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+
+        return res;
     }
 }

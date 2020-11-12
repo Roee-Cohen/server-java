@@ -9,9 +9,11 @@ import java.sql.*;
 
 public class DbHandler {
 
+    private static DbHandler instance = null;
+
     private Connection con;
 
-    DbHandler(){
+    private DbHandler(){
         String url = "jdbc:mysql://localhost:3306/ServerDB";
         String user = "root";
         String password = "root";
@@ -29,6 +31,16 @@ public class DbHandler {
         } catch (SQLException throwables) {
             throwables.printStackTrace();
         }
+    }
+
+    public static DbHandler getInstance() {
+        synchronized (Class.class)
+        {
+            if (instance == null)
+                instance = new DbHandler();
+        }
+
+        return instance;
     }
 
     public Status Login(User u){

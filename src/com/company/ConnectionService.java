@@ -1,26 +1,32 @@
 package com.company;
 
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Iterator;
+
 
 public class ConnectionService {
 
-    static List<Socket> connections;
+    static HashMap<String, Socket> connections;
 
     public ConnectionService(){
-        connections = new ArrayList<Socket>();
+        connections = new HashMap<String, Socket>();
     }
 
-    public void AddConnection(Socket con){
-        connections.add(con);
+    public void AddConnection(String username, Socket con){
+        connections.put(username, con);
     }
 
-    public void DeleteConnection(Socket con) {
-        connections.remove(con);
+    public void DeleteConnection(String key) {
+        connections.remove(key);
     }
 
-    public List<Socket> GetAllConnections(){
+    public void ChangeKey(String key, Socket con, String newKey){
+        DeleteConnection(key);
+        AddConnection(newKey, con);
+    }
+    
+    public HashMap<String, Socket> GetAllConnections(){
         return connections;
     }
 }

@@ -7,5 +7,6 @@ public enum Flags {
     DELETE,
     SHUTDOWN,
     LOGIN,
-    REGISTER
+    REGISTER,
+    MESSAGE
 }

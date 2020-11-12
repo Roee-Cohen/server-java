@@ -20,7 +20,7 @@ public class Server
         {
             this.serverSocket = new ServerSocket(PORT);
             System.out.println("Server started listening on port " + PORT);
-            this.dbHandler = new DbHandler();
+            this.dbHandler = DbHandler.getInstance();
             this.connectionService = new ConnectionService();
 
             while(true)
@@ -29,9 +29,10 @@ public class Server
                 this.connection = this.serverSocket.accept();
                 System.out.println("User Connected");
 
-                this.connectionService.AddConnection(this.connection);
+                String connectionID = "NULL"+this.connectionService.GetAllConnections().size();
+                this.connectionService.AddConnection(connectionID, this.connection);
 
-                new Thread(new ConnectionHandler(this.connection, this.connectionService, this.dbHandler)).start();
+                new Thread(new ConnectionHandler(this.connection, connectionID, this.connectionService)).start();
             }
         }
         catch(IOException i)
@@ -45,5 +46,3 @@ public class Server
         new Server();
     }
 }
-
-
