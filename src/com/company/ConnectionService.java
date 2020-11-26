@@ -29,4 +29,9 @@ public class ConnectionService {
     public HashMap<String, Socket> GetAllConnections(){
         return connections;
     }
+
+    public Socket getSocket(String key)
+    {
+        return connections.get(key);
+    }
 }
