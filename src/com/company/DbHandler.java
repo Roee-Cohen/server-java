@@ -17,8 +17,8 @@ public class DbHandler {
 
     private DbHandler(){
         String url = "jdbc:mysql://localhost:3306/ServerDB";
-        String user = "user";
-        String password = "user";
+        String user = "root";
+        String password = "root";
 
 //        try {
 //            Class.forName("com.mysql.cj.jdbc.Driver").newInstance();
@@ -128,4 +128,5 @@ public class DbHandler {
 
         return s;
     }
+  }
 }

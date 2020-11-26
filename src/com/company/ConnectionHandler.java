@@ -69,6 +69,7 @@ class ConnectionHandler implements Runnable
                     // receive request
                     request = this.inStream.readUTF();
                     req = this.g.fromJson(request, RequestFormat.class);
+                    System.out.println("Flags: " + req.command.name());
                 }
                 catch (SocketException i){
                     System.out.println(i);
@@ -175,12 +176,13 @@ class ConnectionHandler implements Runnable
 
         HashMap<String, Socket> connections = this.connectionService.GetAllConnections();
 
+
         for(String username : connections.keySet()){
             if (username.equals(msg.sender)){
 
                 // get connections to send message
                 Collection<Socket> dest = this.connectionService.GetAllConnections().values();
-                dest.remove(this.socket);
+                //dest.remove(this.socket);
 
                 // send for each connection
                 for (Socket con : dest){

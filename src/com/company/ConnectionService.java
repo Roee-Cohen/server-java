@@ -25,7 +25,7 @@ public class ConnectionService {
         DeleteConnection(key);
         AddConnection(newKey, con);
     }
-
+    
     public HashMap<String, Socket> GetAllConnections(){
         return connections;
     }
