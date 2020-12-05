@@ -21,6 +21,4 @@ public class Main {
         ResponseFormat r = c.ExecCommand(Flags.LOGIN, data);
         System.out.println(r.status.name() + ", " + r.data);
     }
-
-
 }

@@ -16,7 +16,7 @@ public class DbHandler {
     private DbHandler(){
         String url = "jdbc:mysql://localhost:3306/ServerDB";
         String user = "root";
-        String password = "root";
+        String password = "ABcd1234";
 
 //        try {
 //            Class.forName("com.mysql.cj.jdbc.Driver").newInstance();
