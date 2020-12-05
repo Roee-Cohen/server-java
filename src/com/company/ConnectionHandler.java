@@ -6,6 +6,7 @@ import com.utils.*;
 import java.io.*;
 import java.net.Socket;
 import java.net.SocketException;
+import java.sql.Connection;
 import java.util.Collection;
 import java.util.HashMap;
 
@@ -154,10 +155,23 @@ class ConnectionHandler implements Runnable
     }
 
     private ResponseFormat MessagePass(RequestFormat req){
-        System.out.println("Broadcast");
+        System.out.println("Server got message");
         MessagePacket msg = this.g.fromJson(req.data, MessagePacket.class);
-        System.out.println(msg.content);
-        String carry = this.g.toJson(msg);
+
+        if (msg.msgPurpose == MessagePurpose.BROADCAST)
+            return Broadcast(msg);
+        if (msg.msgPurpose == MessagePurpose.UNICAST)
+            return Unicast(msg);
+
+        return null;
+    }
+
+    private ResponseFormat Broadcast(MessagePacket msg){
+        System.out.println("Broadcast");
+
+        java.util.Date date=new java.util.Date();
+
+        String carry = this.g.toJson(new Message(msg, date.toString()));
         ResponseFormat res = new ResponseFormat(Status.INTERNAL_SERVER_ERROR, Status.INTERNAL_SERVER_ERROR.name());
 
         HashMap<String, Socket> connections = this.connectionService.GetAllConnections();
@@ -174,7 +188,7 @@ class ConnectionHandler implements Runnable
                 for (Socket con : dest){
                     try {
                         DataOutputStream distributor = new DataOutputStream(con.getOutputStream());
-                        distributor.writeUTF(msg.content);
+                        distributor.writeUTF(carry);
 
                         res.status = Status.OK;
                         res.data = Status.OK.name();
@@ -183,6 +197,29 @@ class ConnectionHandler implements Runnable
                     }
                 }
             }
+        }
+
+        return res;
+    }
+
+    private ResponseFormat Unicast(MessagePacket msg){
+        System.out.println("Unicast");
+
+        java.util.Date date=new java.util.Date();
+
+        String carry = this.g.toJson(new Message(msg, date.toString()));
+        ResponseFormat res = new ResponseFormat(Status.INTERNAL_SERVER_ERROR, Status.INTERNAL_SERVER_ERROR.name());
+
+        Socket con = this.connectionService.getSocket(msg.dest);
+
+        try {
+            DataOutputStream distributor = new DataOutputStream(con.getOutputStream());
+            distributor.writeUTF(carry);
+
+            res.status = Status.OK;
+            res.data = Status.OK.name();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
 
         return res;
