@@ -1,93 +1,88 @@
 package com.company;
 
-import com.utils.MessagePacket;
-import com.utils.Status;
-import com.utils.User;
-import com.utils.MessageType;
-
-import com.mysql.jdbc.Driver;
+import com.utils.*;
 
 import java.sql.*;
+import java.util.ArrayList;
 
 public class DbHandler {
 
     private static DbHandler instance = null;
 
-    private Connection con;
+    private Connection connection;
 
-    private DbHandler(){
-        String url = "jdbc:mysql://localhost:3306/ServerDB";
-        String user = "root";
-        String password = "ABcd1234";
+    private DbHandler() {
+        String url = "jdbc:sqlite:/C:\\sqlite\\sqlite-tools-win32-x86-3340000\\sqlite-tools-win32-x86-3340000\\chat_app.db";
+//        String user = "root";
+//        String password = "ABcd1234";
 
-//        try {
-//            Class.forName("com.mysql.cj.jdbc.Driver").newInstance();
-//        } catch (Exception ex) {
-//            System.out.println("failed to connect mysql driver");
-//            System.out.println(ex);
-//            System.exit(0);
-//        }
-
-        try{
-            con = DriverManager.getConnection(url, user, password);
+        try {
+            try {
+                Class.forName("org.sqlite.JDBC");
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+            connection = DriverManager.getConnection(url);
         } catch (SQLException throwables) {
             throwables.printStackTrace();
         }
+
+//        try {
+//            connection = DriverManager.getConnection(url, user, password);
+//        } catch (SQLException throwables) {
+//            throwables.printStackTrace();
+//        }
     }
 
     public static DbHandler getInstance() {
-        synchronized (Class.class)
-        {
+        synchronized (Class.class) {
             if (instance == null)
                 instance = new DbHandler();
         }
-
         return instance;
     }
 
-    public Status Login(User u){
-        Status s = Status.INTERNAL_SERVER_ERROR;
+    public Status login(User user) {
+        Status status = Status.INTERNAL_SERVER_ERROR;
 
         try {
-            Statement stmt = con.createStatement();
-            ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM users WHERE username='%s' AND password='%s'", u.getUsername(), u.getPassword()));
+            Statement statement = connection.createStatement();
+            String query = String.format("SELECT * FROM users WHERE username='%s' AND password='%s'", user.getUsername(), user.getPassword());
+            ResultSet resultSet = statement.executeQuery(query);
 
             System.out.println("hey");
-            if (rs.next()){
-                s = Status.OK;
+            if (resultSet.next()) {
+                status = Status.OK;
+            } else {
+                status = Status.NOTFOUND;
             }
-            else{
-                s = Status.NOTFOUND;
-            }
-
         } catch (SQLException throwables) {
             throwables.printStackTrace();
         }
 
-        return s;
+        return status;
     }
 
-    public Status Create(User u){
-        Status s = Status.INTERNAL_SERVER_ERROR;
+    public Status create(User user) {
+        Status status = Status.INTERNAL_SERVER_ERROR;
 
         try {
-            Statement stmt = con.createStatement();
-            ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM users WHERE username='%s' AND password='%s'",
-                    u.getUsername(), u.getPassword()));
+            Statement statement = connection.createStatement();
+            String query = String.format("SELECT * FROM users WHERE username='%s' AND password='%s'",
+                    user.getUsername(), user.getPassword());
+            ResultSet resultSet = statement.executeQuery(query);
 
-            if (rs.next()){
-                s = Status.BAD_REQUEST;
-            }
-            else{
-                Statement crt = con.createStatement();
-                int aff = crt.executeUpdate(String.format("INSERT INTO users(username, password) VALUES('%s', '%s')",
-                        u.getUsername(), u.getPassword()));
+            if (resultSet.next()) {
+                status = Status.BAD_REQUEST;
+            } else {
+                Statement create = connection.createStatement();
+                int aff = create.executeUpdate(String.format("INSERT INTO users(username, password) VALUES('%s', '%s')",
+                        user.getUsername(), user.getPassword()));
 
-                if (aff > 0){
-                    s = Status.OK;
-                }
-                else{
-                    s = Status.FORBIDDEN;
+                if (aff > 0) {
+                    status = Status.OK;
+                } else {
+                    status = Status.FORBIDDEN;
                 }
             }
 
@@ -95,38 +90,71 @@ public class DbHandler {
             throwables.printStackTrace();
         }
 
-        return s;
+        return status;
     }
 
-    public Status InsertMessage(MessagePacket msg, java.util.Date date){
-        Status s = Status.INTERNAL_SERVER_ERROR;
+    public Status insertMessage(MessagePacket msg, java.util.Date date) {
+        Status status = Status.INTERNAL_SERVER_ERROR;
 
-        java.sql.Date sqlDate=new java.sql.Date(date.getTime());
-        java.sql.Timestamp sqlTime=new java.sql.Timestamp(date.getTime());
+        java.sql.Date sqlDate = new java.sql.Date(date.getTime());
+        java.sql.Timestamp sqlTime = new java.sql.Timestamp(date.getTime());
 
         try {
-            PreparedStatement ps=con.prepareStatement("INSERT INTO messages" +
+            PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO messages" +
                     "(sender, destination, content, type, purpose, time_stamp)" +
                     "values(?,?,?,?,?,?)");
-            ps.setString(1,msg.sender);
-            ps.setString(2, msg.dest);
-            ps.setString(3, msg.content);
-            ps.setString(4, msg.msgType.name());
-            ps.setString(5, msg.msgPurpose.name());
-            ps.setDate(6, Date.valueOf(sqlDate.toString() + sqlTime.toString()));
-            int aff = ps.executeUpdate();
+            preparedStatement.setString(1, msg.sender);
+            preparedStatement.setString(2, msg.dest);
+            preparedStatement.setString(3, msg.content);
+            preparedStatement.setString(4, msg.msgType.name());
+            preparedStatement.setString(5, msg.msgPurpose.name());
+            preparedStatement.setTimestamp(6, sqlTime);
+            int aff = preparedStatement.executeUpdate();
 
-            if (aff > 0){
-                s = Status.OK;
-            }
-            else{
-                s = Status.BAD_REQUEST;
+            if (aff > 0) {
+                status = Status.OK;
+            } else {
+                status = Status.BAD_REQUEST;
             }
         } catch (SQLException throwables) {
             throwables.printStackTrace();
         }
 
-        return s;
+        return status;
     }
-  }
+
+    public Status getMessages(RequestFormat req, ArrayList<Message> messages) {
+
+        Status status = Status.INTERNAL_SERVER_ERROR;
+
+        try {
+            Statement statement = connection.createStatement();
+            String[] usernames = req.data.split(",");
+            String query = "SELECT * FROM messages WHERE (sender=\"" + usernames[0] +
+                    "\" AND destination=\"" + usernames[1] + "\") OR (sender=\"" + usernames[1] +
+                    "\" AND destination=\"" + usernames[0] + "\")";
+            ResultSet resultSet = statement.executeQuery(query);
+
+            while (resultSet.next()) {
+                String sender, destination, content, type, purpose;
+                sender = resultSet.getString("sender");
+                destination = resultSet.getString("destination");
+                content = resultSet.getString("content");
+                Message message = new Message(new MessagePacket(sender, content, destination,
+                        MessageType.MESSAGE, MessagePurpose.UNICAST),"jjkklk");
+                messages.add(message);
+            }
+            System.out.println(messages.size());
+            if (messages.size() > 0) {
+                status = Status.OK;
+            } else {
+                status = Status.NOTFOUND;
+            }
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+
+        return status;
+    }
 }
+

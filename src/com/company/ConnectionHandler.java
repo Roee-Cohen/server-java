@@ -6,13 +6,11 @@ import com.utils.*;
 import java.io.*;
 import java.net.Socket;
 import java.net.SocketException;
-import java.sql.Connection;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 
-class ConnectionHandler implements Runnable
-{
-    private DbHandler dbHandler;
+class ConnectionHandler implements Runnable {
     private String connectionID;
     private ConnectionService connectionService;
     private Socket socket;
@@ -22,17 +20,14 @@ class ConnectionHandler implements Runnable
 
 
     // Constructor
-    public ConnectionHandler(Socket socket, String connectionID, ConnectionService connectionService)
-    {
+    public ConnectionHandler(Socket socket, String connectionID, ConnectionService connectionService) {
         this.socket = socket;
-        this.dbHandler = DbHandler.getInstance();
         this.connectionService = connectionService;
         this.connectionID = connectionID;
 
         System.out.println(Thread.currentThread().getName() + connectionService.GetAllConnections());
 
-        try
-        {
+        try {
             // receive from the socket
             inStream = new DataInputStream(new BufferedInputStream(this.socket.getInputStream()));
 
@@ -40,56 +35,49 @@ class ConnectionHandler implements Runnable
             outStream = new DataOutputStream(this.socket.getOutputStream());
 
             this.g = new Gson();
-        }
-        catch (IOException e)
-        {
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
     @Override
-    public void run()
-    {
-        try
-        {
+    public void run() {
+        try {
             String request = this.inStream.readUTF();
             RequestFormat req = this.g.fromJson(request, RequestFormat.class);
 
-            while (!req.command.equals(Flags.SHUTDOWN)) {
-                try
-                {
+            while (!req.command.equals(Commends.SHUTDOWN)) {
+                try {
                     System.out.println("command: " + req.command);
                     System.out.println("data: " + req.data);
 
                     // execute command
-                    ResponseFormat res = this.ExecCommand(req);
-                    String response = this.g.toJson(res);
-                    this.outStream.writeUTF(response);
+                    ResponseFormat res = execCommand(req);
+                    String response = g.toJson(res);
+                    if (!req.command.equals(Commends.MESSAGE))
+                        outStream.writeUTF(response);
 
                     // receive request
-                    request = this.inStream.readUTF();
-                    req = this.g.fromJson(request, RequestFormat.class);
+                    request = inStream.readUTF();
+                    req = g.fromJson(request, RequestFormat.class);
                     System.out.println("Flags: " + req.command.name());
-                }
-                catch (SocketException i){
+                } catch (SocketException i) {
                     System.out.println(i);
-                    this.closeSocket("User forced to shutdown");
+                    closeSocket("User forced to shutdown");
                     break;
                 }
             }
 
-            if (req.command.equals(Flags.SHUTDOWN))
-                this.closeSocket("User asked to shutdown");
+            if (req.command.equals(Commends.SHUTDOWN))
+                closeSocket("User asked to shutdown");
 
-        }
-        catch(IOException i)
-        {
+        } catch (IOException i) {
             closeSocket("IO Exception");
             System.out.println(i);
         }
     }
 
-    private void closeSocket(String msg){
+    private void closeSocket(String msg) {
 
         System.out.println(msg);
         System.out.println("Closing Connection...");
@@ -102,90 +90,98 @@ class ConnectionHandler implements Runnable
             this.outStream.close();
 
             System.out.println(this.connectionService.GetAllConnections());
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private ResponseFormat ExecCommand(RequestFormat req){
+    private ResponseFormat execCommand(RequestFormat req) {
 
-        if (req.command.equals(Flags.REGISTER))
-            return this.CreateUser(req);
+        if (req.command.equals(Commends.REGISTER))
+            return createUser(req);
 
-        if (req.command.equals(Flags.CREATE))
-            return this.CreateUser(req);
+        if (req.command.equals(Commends.CREATE))
+            return createUser(req);
 
-        if (req.command.equals(Flags.LOGIN))
-            return this.Login(req);
+        if (req.command.equals(Commends.LOGIN))
+            return login(req);
 
-        if (req.command.equals(Flags.MESSAGE))
-            return this.MessagePass(req);
+        if (req.command.equals(Commends.MESSAGE))
+            return messagePass(req);
+
+        if (req.command.equals(Commends.LOAD_MESSAGES))
+            return getChatMessages(req);
 
         return null;
     }
 
-    private ResponseFormat CreateUser(RequestFormat req){
+    private ResponseFormat getChatMessages(RequestFormat req) {
+        ArrayList<Message> messages = new ArrayList<>();
+        Status status = DbHandler.getInstance().getMessages(req, messages);
+        return new ResponseFormat(status, g.toJson(messages));
+    }
+
+    private ResponseFormat createUser(RequestFormat req) {
         System.out.println("create user is called");
         User u = this.g.fromJson(req.data, User.class);
         System.out.println(u.getUsername() + " " + u.getPassword());
 
         // create user in db
-        Status s = this.dbHandler.Create(u);
+        Status s = DbHandler.getInstance().create(u);
         System.out.println("Create operation status: " + s.name());
 
         return new ResponseFormat(s, "user created");
     }
 
-    private ResponseFormat Login(RequestFormat req){
+    private ResponseFormat login(RequestFormat req) {
         System.out.println("Login check on server side");
 
-        User u = this.g.fromJson(req.data, User.class);
-        System.out.println("user login check " + u.getUsername() + " " + u.getPassword());
+        User user = g.fromJson(req.data, User.class);
+        System.out.println("user login check " + user.getUsername() + " " + user.getPassword());
 
         // validate user
-        Status s = this.dbHandler.Login(u);
+        Status s = DbHandler.getInstance().login(user);
         System.out.println("Login operation status: " + s.name());
 
-        this.connectionService.ChangeKey(connectionID, this.socket, u.getUsername());
-        this.connectionID = u.getUsername();
+        connectionService.ChangeKey(connectionID, socket, user.getUsername());
+        connectionID = user.getUsername();
 
         // generate login packet
         return new ResponseFormat(s, "successfully logged in");
     }
 
-    private ResponseFormat MessagePass(RequestFormat req){
+    private ResponseFormat messagePass(RequestFormat req) {
         System.out.println("Server got message");
-        MessagePacket msg = this.g.fromJson(req.data, MessagePacket.class);
+        MessagePacket msg = g.fromJson(req.data, MessagePacket.class);
 
         if (msg.msgPurpose == MessagePurpose.BROADCAST)
-            return Broadcast(msg);
+            return broadcast(msg);
         if (msg.msgPurpose == MessagePurpose.UNICAST)
-            return Unicast(msg);
+            return unicast(msg);
 
         return null;
     }
 
-    private ResponseFormat Broadcast(MessagePacket msg){
+    private ResponseFormat broadcast(MessagePacket message) {
         System.out.println("Broadcast");
 
-        java.util.Date date=new java.util.Date();
+        java.util.Date date = new java.util.Date();
+        String carry = g.toJson(new Message(message, date.toString()));
+        DbHandler.getInstance().insertMessage(message, date);
 
-        String carry = this.g.toJson(new Message(msg, date.toString()));
         ResponseFormat res = new ResponseFormat(Status.INTERNAL_SERVER_ERROR, Status.INTERNAL_SERVER_ERROR.name());
 
-        HashMap<String, Socket> connections = this.connectionService.GetAllConnections();
+        HashMap<String, Socket> connections = connectionService.GetAllConnections();
 
-
-        for(String username : connections.keySet()){
-            if (username.equals(msg.sender)){
+        for (String username : connections.keySet()) {
+            if (username.equals(message.sender)) {
 
                 // get connections to send message
-                Collection<Socket> dest = this.connectionService.GetAllConnections().values();
+                Collection<Socket> dest = connections.values();
                 //dest.remove(this.socket);
 
                 // send for each connection
-                for (Socket con : dest){
+                for (Socket con : dest) {
                     try {
                         DataOutputStream distributor = new DataOutputStream(con.getOutputStream());
                         distributor.writeUTF(carry);
@@ -202,26 +198,29 @@ class ConnectionHandler implements Runnable
         return res;
     }
 
-    private ResponseFormat Unicast(MessagePacket msg){
+    private ResponseFormat unicast(MessagePacket messagePacket) {
         System.out.println("Unicast");
 
-        java.util.Date date=new java.util.Date();
+        java.util.Date date = new java.util.Date();
+        String carry = g.toJson(new Message(messagePacket, date.toString()));
+        DbHandler.getInstance().insertMessage(messagePacket, date);
 
-        String carry = this.g.toJson(new Message(msg, date.toString()));
-        ResponseFormat res = new ResponseFormat(Status.INTERNAL_SERVER_ERROR, Status.INTERNAL_SERVER_ERROR.name());
+        ResponseFormat response = new ResponseFormat(Status.INTERNAL_SERVER_ERROR, Status.INTERNAL_SERVER_ERROR.name());
 
-        Socket con = this.connectionService.getSocket(msg.dest);
+        Socket con = connectionService.getSocket(messagePacket.dest);
 
-        try {
-            DataOutputStream distributor = new DataOutputStream(con.getOutputStream());
-            distributor.writeUTF(carry);
+        if(con != null) {
+            try {
+                DataOutputStream distributor = new DataOutputStream(con.getOutputStream());
+                distributor.writeUTF(carry);
 
-            res.status = Status.OK;
-            res.data = Status.OK.name();
-        } catch (IOException e) {
-            e.printStackTrace();
+                response.status = Status.OK;
+                response.data = Status.OK.name();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
 
-        return res;
+        return response;
     }
 }
