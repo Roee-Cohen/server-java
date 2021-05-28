@@ -53,8 +53,12 @@ class ConnectionHandler implements Runnable {
                     // execute command
                     ResponseFormat res = execCommand(req);
                     String response = g.toJson(res);
+
                     if (!req.command.equals(Commends.MESSAGE))
                         outStream.writeUTF(response);
+
+                    if (req.command.equals(Commends.LOG_OUT))
+                        closeSocket(req.data + " logged out");
 
                     // receive request
                     request = inStream.readUTF();
@@ -114,7 +118,14 @@ class ConnectionHandler implements Runnable {
         if(req.command.equals(Commends.LOAD_CONTACTS))
             return getContacts(req);
 
+        if(req.command.equals(Commends.LOG_OUT))
+            return bye(req);
+
         return null;
+    }
+
+    private ResponseFormat bye(RequestFormat req) {
+        return new ResponseFormat(Status.OK, "bye");
     }
 
     private ResponseFormat getContacts(RequestFormat req) {
