@@ -6,7 +6,6 @@ import com.utils.*;
 import java.io.*;
 import java.net.Socket;
 import java.net.SocketException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 
@@ -112,13 +111,18 @@ class ConnectionHandler implements Runnable {
         if (req.command.equals(Commends.LOAD_MESSAGES))
             return getChatMessages(req);
 
+        if(req.command.equals(Commends.LOAD_CONTACTS))
+            return getContacts(req);
+
         return null;
     }
 
+    private ResponseFormat getContacts(RequestFormat req) {
+        return DbHandler.getInstance().getContacts(req.data, g);
+    }
+
     private ResponseFormat getChatMessages(RequestFormat req) {
-        ArrayList<Message> messages = new ArrayList<>();
-        Status status = DbHandler.getInstance().getMessages(req, messages);
-        return new ResponseFormat(status, g.toJson(messages));
+        return DbHandler.getInstance().getMessages(req, g);
     }
 
     private ResponseFormat createUser(RequestFormat req) {
@@ -202,7 +206,7 @@ class ConnectionHandler implements Runnable {
         System.out.println("Unicast");
 
         java.util.Date date = new java.util.Date();
-        String carry = g.toJson(new Message(messagePacket, date.toString()));
+        String carry = g.toJson(new Message(messagePacket, date.getHours() + ":" + date.getMinutes()));
         DbHandler.getInstance().insertMessage(messagePacket, date);
 
         ResponseFormat response = new ResponseFormat(Status.INTERNAL_SERVER_ERROR, Status.INTERNAL_SERVER_ERROR.name());

@@ -1,9 +1,12 @@
 package com.company;
 
+import com.google.gson.Gson;
 import com.utils.*;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
 
 public class DbHandler {
 
@@ -96,7 +99,6 @@ public class DbHandler {
     public Status insertMessage(MessagePacket msg, java.util.Date date) {
         Status status = Status.INTERNAL_SERVER_ERROR;
 
-        java.sql.Date sqlDate = new java.sql.Date(date.getTime());
         java.sql.Timestamp sqlTime = new java.sql.Timestamp(date.getTime());
 
         try {
@@ -123,10 +125,10 @@ public class DbHandler {
         return status;
     }
 
-    public Status getMessages(RequestFormat req, ArrayList<Message> messages) {
+    public ResponseFormat getMessages(RequestFormat req, Gson gson) {
 
         Status status = Status.INTERNAL_SERVER_ERROR;
-
+        ArrayList<Message> messages = new ArrayList<>();
         try {
             Statement statement = connection.createStatement();
             String[] usernames = req.data.split(",");
@@ -136,12 +138,14 @@ public class DbHandler {
             ResultSet resultSet = statement.executeQuery(query);
 
             while (resultSet.next()) {
-                String sender, destination, content, type, purpose;
+                String sender, destination, content;
                 sender = resultSet.getString("sender");
                 destination = resultSet.getString("destination");
                 content = resultSet.getString("content");
+                Long time = resultSet.getLong("time_stamp");
+                Date date = new Date(time);
                 Message message = new Message(new MessagePacket(sender, content, destination,
-                        MessageType.MESSAGE, MessagePurpose.UNICAST),"jjkklk");
+                        MessageType.MESSAGE, MessagePurpose.UNICAST), date.getHours() + ":" + date.getMinutes());
                 messages.add(message);
             }
             System.out.println(messages.size());
@@ -154,7 +158,40 @@ public class DbHandler {
             throwables.printStackTrace();
         }
 
-        return status;
+        return new ResponseFormat(status, gson.toJson(messages));
+    }
+
+    public ResponseFormat getContacts(String username, Gson gson) {
+        Status status = Status.INTERNAL_SERVER_ERROR;
+        ArrayList<String> contacts = new ArrayList<>();
+        HashMap<String, Boolean> mapNoRepetitions = new HashMap<>();
+        try {
+            Statement statement = connection.createStatement();
+            String query = "SELECT DISTINCT sender, destination FROM messages WHERE (sender=\"" + username +
+                    "\" OR destination=\"" + username + "\")";
+            ResultSet resultSet = statement.executeQuery(query);
+
+            while (resultSet.next()) {
+                String sender, destination;
+                sender = resultSet.getString("sender");
+                destination = resultSet.getString("destination");
+                String name = sender.equals(username) ? destination : sender;
+                if (mapNoRepetitions.get(name) == null) {
+                    mapNoRepetitions.put(name, true);
+                    contacts.add(name);
+                }
+            }
+            System.out.println(contacts.size());
+            if (contacts.size() > 0) {
+                status = Status.OK;
+            } else {
+                status = Status.NOTFOUND;
+            }
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+
+        return new ResponseFormat(status, gson.toJson(contacts));
     }
 }
 

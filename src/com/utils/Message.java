@@ -2,11 +2,11 @@ package com.utils;
 
 public class Message {
 
-    public MessagePacket msg;
+    public MessagePacket message;
     public String date;
 
     public Message(MessagePacket msg, String date){
-        this.msg = msg;
+        this.message = msg;
         this.date = date;
     }
 }

@@ -3,7 +3,7 @@ package com.utils;
 public enum Commends {
     CREATE,
     LOAD_MESSAGES,
-    LOAD_CHATS,
+    LOAD_CONTACTS,
     UPDATE,
     DELETE,
     SHUTDOWN,
