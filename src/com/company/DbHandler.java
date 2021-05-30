@@ -168,7 +168,7 @@ public class DbHandler {
         try {
             Statement statement = connection.createStatement();
             String query = "SELECT DISTINCT sender, destination FROM messages WHERE (sender=\"" + username +
-                    "\" OR destination=\"" + username + "\")";
+                    "\" OR destination=\"" + username + "\") AND purpose = \"UNICAST\"";
             ResultSet resultSet = statement.executeQuery(query);
 
             while (resultSet.next()) {
